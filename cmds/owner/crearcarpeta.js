@@ -1,13 +1,23 @@
 import fetch from 'node-fetch'
 
-const handler = async (m, { conn, text, command }) => {
+const handler = async (m, argumentsObj) => {
+  // Extraemos las propiedades de forma segura para evitar fallos de undefined
+  const conn = argumentsObj?.conn || global.conn
+  const text = argumentsObj?.text
+
+  // Verificación de seguridad por si conn no está disponible
+  if (!conn || typeof conn.sendMessage !== 'function') {
+    console.error('Error crítico: conn.sendMessage no está disponible.')
+    return
+  }
+
   // ==========================================
   // CONFIGURACIÓN PRINCIPAL
   // ==========================================
   const GITHUB_TOKEN = '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' // Tu token de GitHub
   const REPO_OWNER = 'aotsutsuki183-ctrl'                // Tu usuario
   const REPO_NAME = 'Sumibot-md'                         // Tu repositorio
-  const BRANCH = 'main'                             // Tu rama
+  const BRANCH = 'principal'                             // Tu rama
   // ==========================================
 
   // Números permitidos (Owner)
@@ -24,22 +34,47 @@ const handler = async (m, { conn, text, command }) => {
   }
 
   if (!text) {
-    return conn.sendMessage(m.chat, { text: `《✦》 **Uso incorrecto.**\n\n* Ejemplo:\n  * \`_.crearcarpeta plugins/test.js | console.log("Hola");\`` }, { quoted: m })
+    return conn.sendMessage(m.chat, { text: `《✦》 **Uso incorrecto.**\n\n* Ejemplo:\n  * \`_.crearcarpeta comandos/test.js | console.log("Hola");\`` }, { quoted: m })
   }
 
   try {
-    const [pathInput, ...contentParts] = text.split('|')
-    const filePath = pathInput.trim()
-    const fileContent = contentParts.join('|').trim()
+    const separatorIndex = text.indexOf('|')
+    if (separatorIndex === -1) {
+      return conn.sendMessage(m.chat, { text: '⚠️ Debes usar una barra vertical (|) para separar la ruta del contenido del archivo.' }, { quoted: m })
+    }
+
+    const filePath = text.slice(0, separatorIndex).trim()
+    const fileContent = text.slice(separatorIndex + 1).trim()
 
     if (!filePath) {
       return conn.sendMessage(m.chat, { text: '⚠️ Especifica la ruta y el nombre del archivo.' }, { quoted: m })
     }
 
-    const message = `Create ${filePath} via Sumibot-md`
-    const encodedContent = Buffer.from(fileContent || '# Creado automáticamente').toString('base64')
     const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${filePath}`
     
+    let fileSha = null
+    const checkFile = await fetch(url, {
+      headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'User-Agent': 'Sumibot-md' }
+    })
+    
+    if (checkFile.ok) {
+      const fileData = await checkFile.json()
+      fileSha = fileData.sha
+    }
+
+    const message = `Update/Create ${filePath} via Sumibot-md`
+    const encodedContent = Buffer.from(fileContent || '# Creado automáticamente', 'utf-8').toString('base64')
+    
+    const bodyData = {
+      message: message,
+      content: encodedContent,
+      branch: BRANCH
+    }
+    
+    if (fileSha) {
+      bodyData.sha = fileSha
+    }
+
     const response = await fetch(url, {
       method: 'PUT',
       headers: {
@@ -47,12 +82,12 @@ const handler = async (m, { conn, text, command }) => {
         'Content-Type': 'application/json',
         'User-Agent': 'Sumibot-md'
       },
-      body: JSON.stringify({ message, content: encodedContent, branch: BRANCH })
+      body: JSON.stringify(bodyData)
     })
 
     const resJson = await response.json()
     if (response.ok) {
-      await conn.sendMessage(m.chat, { text: `✅ **¡Éxito!** Archivo creado en la ruta:\n\`${filePath}\`` }, { quoted: m })
+      await conn.sendMessage(m.chat, { text: `✅ **¡Éxito!** Archivo creado o actualizado correctamente en:\n\`${filePath}\`` }, { quoted: m })
     } else {
       await conn.sendMessage(m.chat, { text: `❌ **Error de GitHub:** ${resJson.message || 'No se pudo crear.'}` }, { quoted: m })
     }
