@@ -2,16 +2,18 @@ import fetch from 'node-fetch';
 
 let handler = async (m, { conn, text, usedPrefix, command }) => {
     if (!text) {
-        return m.reply(`*⚠️ Por favor, ingresa la ruta de la carpeta y el archivo.*\n\n*Ejemplo:* \`${usedPrefix + command} src/mi_carpeta/README.md\``);
+        return conn.sendMessage(m.chat, { text: `*⚠️ Por favor, ingresa la ruta de la carpeta y el archivo.*\n\n*Ejemplo:* \`${usedPrefix + command} src/mi_carpeta/README.md\`` }, { quoted: m });
     }
 
+    // Tus datos de GitHub configurados
     const GITHUB_TOKEN = global.github_token || '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';
     const REPO_OWNER = global.github_owner || 'aotsutsuki183-ctrl';
     const REPO_NAME = global.github_repo || 'Sumibot-md';
     const BRANCH = 'main';
 
-    if (GITHUB_TOKEN === 'TU_TOKEN_PERSONAL_DE_GITHUB') {
-        return m.reply(`*❌ Error:* No has configurado tu Token de GitHub en el código del comando.`);
+    // Validación única y limpia por si el token estuviera vacío
+    if (!GITHUB_TOKEN) {
+        return conn.sendMessage(m.chat, { text: `*❌ Error:* No se ha detectado ningún Token de GitHub configurado.` }, { quoted: m });
     }
 
     try {
@@ -19,7 +21,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         let commitMessage = `Crear carpeta y archivo ${filePath} via bot`;
         let fileContent = Buffer.from(`# Creado automáticamente por el bot\nCarpeta: ${filePath}`).toString('base64');
 
-        await m.reply(`*⏳ Conectando con GitHub para crear la carpeta/archivo...*`);
+        await conn.sendMessage(m.chat, { text: `*⏳ Conectando con GitHub para crear la carpeta/archivo...*` }, { quoted: m });
 
         const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${filePath}`;
 
@@ -40,22 +42,21 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         const data = await response.json();
 
         if (response.ok) {
-            await m.reply(`*✅ ¡Carpeta y archivo creados en GitHub con éxito!* \n\n📁 **Ruta:** \`${filePath}\`\n\n*💡 Haz un pull o usa tu comando de actualización para reflejarlo localmente.*`);
+            await conn.sendMessage(m.chat, { text: `*✅ ¡Carpeta y archivo creados en GitHub con éxito!* \n\n📁 **Ruta:** \`${filePath}\`\n\n*💡 Haz un pull o usa tu comando de actualización para reflejarlo localmente.*` }, { quoted: m });
         } else {
-            await m.reply(`*❌ Error de GitHub:* \`${data.message || 'No se pudo completar la acción'}\``);
+            await conn.sendMessage(m.chat, { text: `*❌ Error de GitHub:* \`${data.message || 'No se pudo completar la acción'}\`` }, { quoted: m });
         }
 
     } catch (error) {
         console.error('Error al conectar con GitHub:', error);
-        await m.reply(`*❌ Ocurrió un error crítico:* \`${error.message}\``);
+        await conn.sendMessage(m.chat, { text: `*❌ Ocurrió un error crítico:* \`${error.message}\`` }, { quoted: m });
     }
 };
 
-// Definido como texto plano o array simple para evitar conflictos con el toLowerCase del loader
 handler.help = ['crearcarpeta <ruta/archivo>'];
 handler.tags = ['owner'];
 handler.command = ['crearcarpeta', 'addfolder', 'nuevacarpeta'];
 handler.rowner = true;
 
 export default handler;
-        
+    
