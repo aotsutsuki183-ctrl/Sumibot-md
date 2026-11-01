@@ -12,15 +12,15 @@ global.owner = [
 ];
 
 global.devs = [
-// '51983564381',
+ '51983564381',
 ];
 
 global.staff = [
-//  '<numero',
+ '51983564381',
 ];
 
 global.inv = [
-//  '<numero>',
+'51983564381',
 ];
 
 global.dev = "Created by @mai";
