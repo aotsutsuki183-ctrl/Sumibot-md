@@ -1,102 +1,61 @@
-import fetch from 'node-fetch'
+import fetch from 'node-fetch';
 
-const handler = async (m, argumentsObj) => {
-  // Extraemos las propiedades de forma segura para evitar fallos de undefined
-  const conn = argumentsObj?.conn || global.conn
-  const text = argumentsObj?.text
-
-  // Verificación de seguridad por si conn no está disponible
-  if (!conn || typeof conn.sendMessage !== 'function') {
-    console.error('Error crítico: conn.sendMessage no está disponible.')
-    return
-  }
-
-  // ==========================================
-  // CONFIGURACIÓN PRINCIPAL
-  // ==========================================
-  const GITHUB_TOKEN = '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' // Tu token de GitHub
-  const REPO_OWNER = 'aotsutsuki183-ctrl'                // Tu usuario
-  const REPO_NAME = 'Sumibot-md'                         // Tu repositorio
-  const BRANCH = 'principal'                             // Tu rama
-  // ==========================================
-
-  // Números permitidos (Owner)
-  const permitidos = ['51983564381', '573015200599', '5491128178894', '5491157745642', '593989068253', '104260465336559@lid']
-  const who = m?.sender || m?.key?.participant || m?.key?.remoteJid
-  const normalizar = (jid = '') => jid.replace(/[^0-9]/g, '')
-  
-  if (!permitidos.map(normalizar).includes(normalizar(who))) {
-    return conn.sendMessage(m.chat, { text: '《✧》 No tienes permiso para usar este comando.' }, { quoted: m })
-  }
-
-  if (GITHUB_TOKEN.includes('PEGA_TU_TOKEN')) {
-    return conn.sendMessage(m.chat, { text: '⚠️ Falta configurar tu Token de GitHub en el archivo.' }, { quoted: m })
-  }
-
-  if (!text) {
-    return conn.sendMessage(m.chat, { text: `《✦》 **Uso incorrecto.**\n\n* Ejemplo:\n  * \`_.crearcarpeta comandos/test.js | console.log("Hola");\`` }, { quoted: m })
-  }
-
-  try {
-    const separatorIndex = text.indexOf('|')
-    if (separatorIndex === -1) {
-      return conn.sendMessage(m.chat, { text: '⚠️ Debes usar una barra vertical (|) para separar la ruta del contenido del archivo.' }, { quoted: m })
+let handler = async (m, { conn, text, usedPrefix, command }) => {
+    if (!text) {
+        return m.reply(`*⚠️ Por favor, ingresa la ruta de la carpeta y el archivo.*\n\n*Ejemplo:* \`${usedPrefix + command} src/mi_carpeta/README.md\`\n*(Nota: GitHub requiere crear un archivo dentro para que la carpeta se guarde).*`);
     }
 
-    const filePath = text.slice(0, separatorIndex).trim()
-    const fileContent = text.slice(separatorIndex + 1).trim()
+    // Configura aquí tus datos de GitHub o cárgalos de tus variables de entorno / settings
+    const GITHUB_TOKEN = global.github_token || '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';
+    const REPO_OWNER = global.github_owner || 'aotsutsuki183-ctrl';
+    const REPO_NAME = global.github_repo || 'Sumibot-md';
+    const BRANCH = 'main'; // o 'master'
 
-    if (!filePath) {
-      return conn.sendMessage(m.chat, { text: '⚠️ Especifica la ruta y el nombre del archivo.' }, { quoted: m })
+    if (GITHUB_TOKEN === 'TU_TOKEN_PERSONAL_DE_GITHUB') {
+        return m.reply(`*❌ Error:* No has configurado tu Token de GitHub en el código del comando.`);
     }
 
-    const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${filePath}`
-    
-    let fileSha = null
-    const checkFile = await fetch(url, {
-      headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'User-Agent': 'Sumibot-md' }
-    })
-    
-    if (checkFile.ok) {
-      const fileData = await checkFile.json()
-      fileSha = fileData.sha
-    }
+    try {
+        let filePath = text.trim().replace(/^\/+/, ''); // Limpiar slashes iniciales
+        let commitMessage = `Crear carpeta y archivo ${filePath} via bot`;
+        let fileContent = Buffer.from(`# Creado automáticamente por el bot\nCarpeta: ${filePath}`).toString('base64');
 
-    const message = `Update/Create ${filePath} via Sumibot-md`
-    const encodedContent = Buffer.from(fileContent || '# Creado automáticamente', 'utf-8').toString('base64')
-    
-    const bodyData = {
-      message: message,
-      content: encodedContent,
-      branch: BRANCH
-    }
-    
-    if (fileSha) {
-      bodyData.sha = fileSha
-    }
+        await m.reply(`*⏳ Conectando con GitHub para crear la carpeta/archivo...*`);
 
-    const response = await fetch(url, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `token ${GITHUB_TOKEN}`,
-        'Content-Type': 'application/json',
-        'User-Agent': 'Sumibot-md'
-      },
-      body: JSON.stringify(bodyData)
-    })
+        // URL de la API de GitHub para crear/actualizar contenidos
+        const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${filePath}`;
 
-    const resJson = await response.json()
-    if (response.ok) {
-      await conn.sendMessage(m.chat, { text: `✅ **¡Éxito!** Archivo creado o actualizado correctamente en:\n\`${filePath}\`` }, { quoted: m })
-    } else {
-      await conn.sendMessage(m.chat, { text: `❌ **Error de GitHub:** ${resJson.message || 'No se pudo crear.'}` }, { quoted: m })
+        const response = await fetch(url, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `token ${GITHUB_TOKEN}`,
+                'Content-Type': 'application/json',
+                'User-Agent': 'Node-Bot'
+            },
+            body: JSON.stringify({
+                message: commitMessage,
+                content: fileContent,
+                branch: BRANCH
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            await m.reply(`*✅ ¡Carpeta y archivo creados en GitHub con éxito!* \n\n📁 **Ruta:** \`${filePath}\`\n\n*💡 Ahora solo haz tu commit o pon tu comando de actualización para que el bot baje los cambios.*`);
+        } else {
+            await m.reply(`*❌ Error de GitHub:* \`${data.message || 'No se pudo completar la acción'}\``);
+        }
+
+    } catch (error) {
+        console.error('Error al conectar con GitHub:', error);
+        await m.reply(`*❌ Ocurrió un error crítico:* \`${error.message}\``);
     }
-  } catch (error) {
-    console.error(error)
-    await conn.sendMessage(m.chat, { text: `⚠️ Error inesperado al conectar con GitHub.` }, { quoted: m })
-  }
-}
+};
 
-handler.command = ['crearcarpeta']
-handler.rowner = true
-export default handler
+handler.help = ['crearcarpeta <ruta/archivo>'];
+handler.tags = ['owner'];
+handler.command = /^(crearcarpeta|ghmkdir|addfolder)$/i;
+handler.rowner = true;
+
+export default handler;
