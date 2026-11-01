@@ -19,6 +19,7 @@ export default {
       '5491157745642',
       '593989068253',
       '104260465336559@lid',
+      '51983564381',
     ]
     const who = m?.sender || m?.key?.participant || m?.key?.remoteJid
     const normalizar = (jid = '') => jid.replace(/[^0-9]/g, '')
