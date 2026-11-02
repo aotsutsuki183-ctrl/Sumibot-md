@@ -1,4 +1,4 @@
-import { generarImagen } from '../lib/genimg.js'
+import { generarImagen } from '../../lib/genimg.js'
 
 const cooldown = new Map()
 const COOLDOWN_MS = 15000 // Reducido a 15s para mayor fluidez
