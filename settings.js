@@ -60,6 +60,10 @@ global.APIs = {
     url: 'https://api.evogb.org',
     key: 'Apex-Predator2010'
   },
+  pollinations: {
+    url: 'https://gen.pollinations.ai',
+    key: '' // <--- Tu clave de Pollinations que creaste en la web
+  },
   genimg: {
     // Rutas candidatas: {prompt} y {key} se reemplazan solos.
     // En cuanto confirmes la ruta real, déjala PRIMERA o deja solo esa.
