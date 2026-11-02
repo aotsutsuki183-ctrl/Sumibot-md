@@ -3,24 +3,36 @@ import { watchFile, unwatchFile } from 'fs';
 import { fileURLToPath } from 'url';
 
 global.owner = [
+  // mai
     '573015200599',
     '104260465336559@lid',
+  // Bryan
     '593989068253',
     '584148014097',
+ // 亗𝙽𝚎𝚝𝚑𝚎𝚛𝙻𝚘𝚛𝚍亗
     '5491157745642',
-    '51983564381',
+    '5491128178894',
+  '51983564381', // capy
 ];
 
 global.devs = [
- '51983564381',
+  '584228025606', // 🤍💖
 ];
 
 global.staff = [
- '51983564381',
+  '5215548732469', // Zaako
+  '51962502233', // 𝓙𝓮𝓼𝓾𝓾
+  '50245695772', // JL
+  '57995580944547@lid', //Stevan (Sair)
+  '5217441863414', // werkito⁶⁶⁶
+  '51983564381', //Alexa
 ];
 
 global.inv = [
-'51983564381',
+  '51983564381', // no tocar att Mai
+  //uwu
+    '51914797450',
+    '265957830295654@lid',
 ];
 
 global.dev = "Created by @mai";
@@ -32,19 +44,19 @@ global.links = {
 };
 
 global.my = {
-  ch: "",
-  ch2: "",
-  ch1: ''
+  ch: "120363420992828502@newsletter", // Oficial
+  ch2: "120363405689107729@newsletter", // Api
+  ch1: '120363401404146384@newsletter'
 };
 
 global.APIs = { 
-  yuki: { url: "https://api.yuki-wabot.my.id", key: null },
+  yuki: { url: "https://api.yuki-wabot.my.id", key: "YukiBot-MD" },
   vreden: { url: "https://api.vreden.web.id", key: null },
   ootaizumi: { url: "https://api.ootaizumi.web.id", key: null },
   delirius: { url: "https://api.delirius.online", key: null },
   zenzxz: { url: "https://api.zenzxz.my.id", key: null },
   siputzx: { url: "https://app.siputzx.my.id", key: null },
-  evogb: { url: "https://api.evogb.org", key: null }
+  evogb: { url: "https://api.evogb.org", key: "Apex-Predator2010" }
 };
 
 global.msgglobal = '✿⸝꙳.˖ Ocurrió un problema, contacte al creador';
