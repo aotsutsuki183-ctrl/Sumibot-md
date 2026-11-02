@@ -56,7 +56,28 @@ global.APIs = {
   delirius: { url: "https://api.delirius.online", key: null },
   zenzxz: { url: "https://api.zenzxz.my.id", key: null },
   siputzx: { url: "https://app.siputzx.my.id", key: null },
-  evogb: { url: "https://api.evogb.org", key: "Apex-Predator2010" }
+  evogb: {
+    url: 'https://api.evogb.org',
+    key: 'Apex-Predator2010'
+  },
+  genimg: {
+    // Rutas candidatas: {prompt} y {key} se reemplazan solos.
+    // En cuanto confirmes la ruta real, déjala PRIMERA o deja solo esa.
+    normal: [
+      '/ai/imagen?prompt={prompt}&key={key}',
+      '/ai/generate-image?prompt={prompt}&key={key}',
+      '/ai/text2img?prompt={prompt}&key={key}',
+      '/ai/flux?prompt={prompt}&key={key}',
+      '/ai/dalle?prompt={prompt}&key={key}'
+    ],
+    nsfw: [
+      '/nsfw/imagen?prompt={prompt}&key={key}',
+      '/nsfw/ia?prompt={prompt}&key={key}',
+      '/nsfw/text2img?prompt={prompt}&key={key}',
+      '/ai/nsfw?prompt={prompt}&key={key}',
+      '/ai/imagen?prompt={prompt}&key={key}&nsfw=true'
+    ]
+  }
 };
 
 global.msgglobal = '✿⸝꙳.˖ Ocurrió un problema, contacte al creador';
@@ -78,3 +99,4 @@ watchFile(file, () => {
   unwatchFile(file);
   import(`${file}?update=${Date.now()}`);
 });
+    
