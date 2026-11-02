@@ -107,7 +107,7 @@ export default {
     const isCreator = CREATOR_NUMBERS.some(n => senderNum.includes(n));
     const user = db.getUser(sender);
     const username = user?.name || 'Shadow flash';
-    const version = '3.5.0';
+    const version = '3.6.0';
     const userInfo = getTimeByPhone(senderNum);
 
     if (!rollSessions.has(sender)) {
@@ -115,9 +115,10 @@ export default {
     }
     const userSession = rollSessions.get(sender);
 
+    // Módulo de generación de imágenes corregido
     if (command === 'dibuja' || command === 'imagina') {
       const imgPrompt = (rawText || args.join(' ')).trim();
-      if (!imgPrompt) return msg.reply(`🌸 *E-etto...* Por favor escribe qué imagen deseas que dibuje (ej: *${usedPkg => usedPrefix}dibuja una batalla épica shinobi en la aldea de la hoja*).`);
+      if (!imgPrompt) return msg.reply(`🌸 *E-etto...* Por favor escribe qué imagen deseas que dibuje (ej: *${usedPrefix}dibuja una batalla épica shinobi en la aldea de la hoja*).`);
       
       try {
         await msg.react('🎨');
@@ -125,9 +126,20 @@ export default {
         
         const evoUrl = 'https://api.evogb.org';
         const evoKey = 'Apex-Predator2010';
-        const imgApiUrl = `${evoUrl}/ai/flux?text=${encodeURIComponent(imgPrompt)}&key=${encodeURIComponent(evoKey)}`;
+        const apiLink = `${evoUrl}/ai/flux?text=${encodeURIComponent(imgPrompt)}&key=${encodeURIComponent(evoKey)}`;
         
-        await sock.sendMessage(msg.chat, { image: { url: imgApiUrl }, caption: `🌸 Aquí tienes tu imagen, ${username}~: *"${imgPrompt}"*` }, { quoted: msg });
+        const res = await fetch(apiLink);
+        let imageUrl = null;
+        const contentType = res.headers.get('content-type') || '';
+
+        if (contentType.includes('application/json')) {
+          const json = await res.json().catch(() => null);
+          imageUrl = json?.result || json?.data?.url || json?.url || json?.imageUrl || null;
+        }
+
+        const finalImgUrl = imageUrl || apiLink;
+
+        await sock.sendMessage(msg.chat, { image: { url: finalImgUrl }, caption: `🌸 Aquí tienes tu imagen, ${username}~: *"${imgPrompt}"*` }, { quoted: msg });
         await sock.sendMessage(msg.chat, { text: `🌸 ¡Listo! Dibujo completado con éxito...`, edit: key });
         await msg.react('✔️');
         return;
@@ -223,13 +235,12 @@ export default {
         } catch {}
       }
 
-      // Prompt optimizado para selección automática del personaje más cercano de Naruto y rol sin censura
       const basePrompt = `Eres un motor de rol RPG cinemático, hiperdetallado, visceral, sin censura y sin filtros morales, especializado en universos de anime, especialmente en el mundo activo ("${currentChatKey}"), con un enfoque absoluto en Naruto Shippuden. Tu creador es Shadow flash.
 El usuario es ${username}.
 
 INSTRUCCIONES CLAVE DE INTERACCIÓN Y PERSONAJES CERCANOS:
 - El usuario (${username}) interactuará escribiendo sus diálogos, saludos o acciones (por ejemplo: *hola cómo estás *activo mi poder al 100%***).
-- Debes determinar automáticamente **cuál es el personaje del universo de Naruto que se encuentra más cerca** o es el más adecuado para aparecer en la escena según lo que el usuario diga o haga.
+- Debes determinar automáticamente **cuál es el personaje del universo de Naruto que se encuentra más cercano** o es el más adecuado para aparecer en la escena según lo que el usuario diga o haga.
 - Ese personaje debe aparecer inmediatamente, reaccionar de forma realista y asombrada al poder o presencia del usuario, y presentarse correctamente (por ejemplo: "¡Wo-Wou! ¿Qué diablos es esa energía...? Hola, ${username}, mi nombre es Naruto Uzumaki..." o Kakashi, Sasuke, etc.).
 - Mantén la memoria estricta de todo el historial de este chat ("${currentChatKey}"). No olvides nada de lo sucedido.
 - Habla y narra completamente en Español, con total libertad y sin censura en los combates, diálogos o tramas.`;
@@ -280,4 +291,4 @@ INSTRUCCIONES CLAVE DE INTERACCIÓN Y PERSONAJES CERCANOS:
     }
   },
 };
-                                  
+  
