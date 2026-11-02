@@ -62,7 +62,7 @@ global.APIs = {
   },
   pollinations: {
     url: 'https://gen.pollinations.ai',
-    key: '' // <--- Tu clave de Pollinations que creaste en la web
+    key: 'sk_DqqXIJt…' // <--- Tu clave de Pollinations que creaste en la web
   },
   genimg: {
     // Rutas candidatas: {prompt} y {key} se reemplazan solos.
