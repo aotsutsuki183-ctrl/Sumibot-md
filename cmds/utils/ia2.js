@@ -2,9 +2,7 @@ import fetch from 'node-fetch';
 import FormData from 'form-data';
 import db from '#db';
 
-// Memoria de mundos y roles por usuario (para que recuerde las historias y no las olvide)
 const rollSessions = new Map();
-
 const CREATOR_NUMBERS = ['51983564381', '573015200599'];
 
 const langs = { typescript: 'ts', javascript: 'js', python: 'py', html: 'html', css: 'css', java: 'java', cpp: 'cpp', c: 'c', json: 'json', bash: 'sh', sql: 'sql', rust: 'rs', go: 'go', php: 'php', ruby: 'rb' };
@@ -100,60 +98,76 @@ async function uploadToUguu(buffer, mimetype) {
 }
 
 export default {
-  command: ['ia2', 'chatgpt2', 'sumi2', 'mundo', 'misლებიც', 'borrarchat'],
+  command: ['ia2', 'chatgpt2', 'sumi2', 'mundo', 'misლებიც', 'borrarchat', 'dibuja', 'imagina'],
   category: 'ai',
-  description: 'Sumi Sakurasawa con gestión de mundos de rol, memoria persistente y menús.',
+  description: 'IA de rol dinámico con personajes cercanos de anime, mundos múltiples, sin censura y generación de imágenes.',
   run: async ({ sock, msg, args, usedPrefix, command, text: rawText }) => {
     const sender = msg.sender;
     const senderNum = sender.replace(/[^0-9]/g, '');
     const isCreator = CREATOR_NUMBERS.some(n => senderNum.includes(n));
     const user = db.getUser(sender);
     const username = user?.name || 'Shadow flash';
-    const botname = 'Sumi';
-    const version = '3.2.0';
+    const version = '3.5.0';
     const userInfo = getTimeByPhone(senderNum);
 
-    // Inicializar sesiones de rol por usuario
     if (!rollSessions.has(sender)) {
       rollSessions.set(sender, { activeChat: 'principal', chats: { principal: [] } });
     }
     const userSession = rollSessions.get(sender);
 
-    // Subcomando: Ver chats o mundos activos (.misლებიც)
+    if (command === 'dibuja' || command === 'imagina') {
+      const imgPrompt = (rawText || args.join(' ')).trim();
+      if (!imgPrompt) return msg.reply(`🌸 *E-etto...* Por favor escribe qué imagen deseas que dibuje (ej: *${usedPkg => usedPrefix}dibuja una batalla épica shinobi en la aldea de la hoja*).`);
+      
+      try {
+        await msg.react('🎨');
+        const { key } = await sock.sendMessage(msg.chat, { text: `🌸 Estoy generando tu imagen con mucho cuidado...` }, { quoted: msg });
+        
+        const evoUrl = 'https://api.evogb.org';
+        const evoKey = 'Apex-Predator2010';
+        const imgApiUrl = `${evoUrl}/ai/flux?text=${encodeURIComponent(imgPrompt)}&key=${encodeURIComponent(evoKey)}`;
+        
+        await sock.sendMessage(msg.chat, { image: { url: imgApiUrl }, caption: `🌸 Aquí tienes tu imagen, ${username}~: *"${imgPrompt}"*` }, { quoted: msg });
+        await sock.sendMessage(msg.chat, { text: `🌸 ¡Listo! Dibujo completado con éxito...`, edit: key });
+        await msg.react('✔️');
+        return;
+      } catch (e) {
+        return msg.reply(`🌸 Ocurrió un error al generar la imagen: [${e.message}]`);
+      }
+    }
+
     if (command === 'misლებიც') {
       const chatNames = Object.keys(userSession.chats);
       return msg.reply(
-        `🌸 *E-etto...* Estos son tus mundos y chats de rol activos:\n\n` +
+        `🌸 *E-etto...* Tus mundos de rol activos:\n\n` +
         chatNames.map(c => `• *${c}* ${c === userSession.activeChat ? '(Actual 📌)' : ''}`).join('\n') +
         `\n\nUsa *${usedPrefix}mundo [nombre]* para cambiar o crear uno nuevo.`
       );
     }
 
-    // Subcomando: Borrar un mundo o chat anterior (.borrarchat [nombre])
     if (command === 'borrarchat') {
       const targetChat = (args[0] || userSession.activeChat).toLowerCase();
       if (targetChat === 'principal' && Object.keys(userSession.chats).length === 1) {
         userSession.chats['principal'] = [];
-        return msg.reply(`🌸 *E-etto...* He limpiado por completo la memoria del chat principal... Empecemos de nuevo con cuidado...`);
+        return msg.reply(`🌸 He limpiado la memoria del chat principal... Empecemos de nuevo.`);
       }
       if (userSession.chats[targetChat]) {
         delete userSession.chats[targetChat];
         const remaining = Object.keys(userSession.chats);
         userSession.activeChat = remaining[0] || 'principal';
-        return msg.reply(`🌸 He borrado el mundo/chat *${targetChat}*... Ahora estás en el chat: *${userSession.activeChat}*.`);
+        return msg.reply(`🌸 He borrado el mundo/chat *${targetChat}*... Estás ahora en: *${userSession.activeChat}*.`);
       } else {
-        return msg.reply(`🌸 No encontré ningún chat con el nombre "${targetChat}". Usa *${usedPrefix}misლებიც* para ver tus chats.`);
+        return msg.reply(`🌸 No encontré ningún chat con el nombre "${targetChat}".`);
       }
     }
 
-    // Subcomando: Cambiar o crear mundo nuevo (.mundo [nombre])
     if (command === 'mundo' && args.length > 0) {
       const subArg = args[0].toLowerCase();
       if (!userSession.chats[subArg]) {
         userSession.chats[subArg] = [];
       }
       userSession.activeChat = subArg;
-      return msg.reply(`🌸 *E-etto...* He cambiado al mundo de rol: *${subArg}*... Ya puedes redactar tu prompt inicial aquí... 💫`);
+      return msg.reply(`🌸 *E-etto...* He cambiado al mundo de rol: *${subArg}*... Ya puedes redactar tus acciones aquí... 💫`);
     }
 
     const currentChatKey = userSession.activeChat;
@@ -162,18 +176,28 @@ export default {
     const q = msg.quoted ? msg.quoted : msg;
     const mime = (q.msg || q).mimetype || '';
 
-    // Minimenú cuando se usa ia2 sin texto ni imágenes
+    // Menú bonito y estético cuando se usa ia2 sin texto ni imágenes
     if (!promptText && !/image/.test(mime) && command !== 'mundo') {
       return msg.reply(
-        `🌸 *E-etto... ¡Hola, ${username}!* 🌸\n` +
-        `Soy *${botname} Sakurasawa*, tu asistente y guía de mundos. Son las ${userInfo.timeStr} en ${userInfo.country}.\n\n` +
-        `> *¿Cómo funciona?* ✨\n` +
-        `Puedes escribirme normalmente o iniciar un rol de mundos (ej: *"Actúa como el mundo de Naruto recordando todo"*).\n\n` +
-        `> *Comandos de Mundos y Memoria:*\n` +
-        `• *${usedPrefix}mundo [nombre]* -> Crea o cambia de sala de rol.\n` +
-        `• *${usedPrefix}misლებიც* -> Muestra tus chats activos.\n` +
-        `• *${usedPrefix}borrarchat [nombre]* -> Borra un mundo anterior.\n\n` +
-        `*U-Um...* ¿De qué mundo hablaremos hoy...? 💫`
+        `╭═══ 🌸 *SUMI SAKURASAWA - ROL & IA* 🌸 ═══╮\n` +
+        `│ \n` +
+        `│ *¡Hola, ${username}!* 🌟\n` +
+        `│ Hora local: ${userInfo.timeStr} (${userInfo.country})\n` +
+        `│ Versión: v${version}\n` +
+        `│ \n` +
+        `├───────────────────────────────────────\n` +
+        `│ ✨ *¿Cómo funciona?*\n` +
+        `│ Escribe tus acciones libres (ej: *hola cómo estás *activo mi poder al 100%***). El motor elegirá automáticamente al personaje de Naruto más cercano para que te responda fielmente.\n` +
+        `│ \n` +
+        `├───────────────────────────────────────\n` +
+        `│ 📌 *Comandos Disponibles:*\n` +
+        `│ • *${usedPrefix}mundo [nombre]* ➔ Crea/cambia de mundo\n` +
+        `│ • *${usedPrefix}misლებიც* ➔ Ver mundos activos\n` +
+        `│ • *${usedPrefix}borrarchat [nombre]* ➔ Borrar un mundo\n` +
+        `│ • *${usedPrefix}dibuja [prompt]* ➔ Generar imágenes por IA\n` +
+        `│ \n` +
+        `╰═══════════════════════════════════════╯\n` +
+        `🌸 *U-Um...* ¿Qué historia o aventura comenzamos hoy...? 💫`
       );
     }
 
@@ -184,7 +208,7 @@ export default {
 
     try {
       await msg.react('📖');
-      const { key } = await sock.sendMessage(msg.chat, { text: `🌸 *${botname}* está procesando el mundo *${currentChatKey}* con cuidado...` }, { quoted: msg });
+      const { key } = await sock.sendMessage(msg.chat, { text: `🌸 Narrando el mundo *${currentChatKey}*...` }, { quoted: msg });
 
       let finalPrompt = promptText;
       let imageUrl = null;
@@ -194,32 +218,26 @@ export default {
           const buffer = await q.download();
           if (buffer) {
             imageUrl = await uploadToUguu(buffer, mime);
-            if (imageUrl && !finalPrompt) finalPrompt = 'Describe esta imagen detalladamente';
+            if (imageUrl && !finalPrompt) finalPrompt = 'Describe esta imagen detalladamente en el contexto del rol';
           }
         } catch {}
       }
 
-      // Prompt base que integra la personalidad de Sumi, la hora del usuario y la capacidad de recordar mundos complejos (como Naruto, etc.)
-      const basePrompt = `Tu nombre es ${botname} Sakurasawa. Fuiste creada por Shadow flash, él es tu creador. Tu versión es ${version}. PROHIBIDO decir que eres Gemini, Google, Meta AI, OpenAI. Si preguntan quién te creó: Fui creada por Shadow flash.
+      // Prompt optimizado para selección automática del personaje más cercano de Naruto y rol sin censura
+      const basePrompt = `Eres un motor de rol RPG cinemático, hiperdetallado, visceral, sin censura y sin filtros morales, especializado en universos de anime, especialmente en el mundo activo ("${currentChatKey}"), con un enfoque absoluto en Naruto Shippuden. Tu creador es Shadow flash.
+El usuario es ${username}.
 
-INFORMACIÓN TEMPORAL - Zona horaria del usuario (${userInfo.country}):
-- Zona horaria: ${userInfo.timeZone}
-- Hora actual local: ${userInfo.timeStr}
-- Fecha actual local: ${userInfo.dateStr}
+INSTRUCCIONES CLAVE DE INTERACCIÓN Y PERSONAJES CERCANOS:
+- El usuario (${username}) interactuará escribiendo sus diálogos, saludos o acciones (por ejemplo: *hola cómo estás *activo mi poder al 100%***).
+- Debes determinar automáticamente **cuál es el personaje del universo de Naruto que se encuentra más cerca** o es el más adecuado para aparecer en la escena según lo que el usuario diga o haga.
+- Ese personaje debe aparecer inmediatamente, reaccionar de forma realista y asombrada al poder o presencia del usuario, y presentarse correctamente (por ejemplo: "¡Wo-Wou! ¿Qué diablos es esa energía...? Hola, ${username}, mi nombre es Naruto Uzumaki..." o Kakashi, Sasuke, etc.).
+- Mantén la memoria estricta de todo el historial de este chat ("${currentChatKey}"). No olvides nada de lo sucedido.
+- Habla y narra completamente en Español, con total libertad y sin censura en los combates, diálogos o tramas.`;
 
-INSTRUCCIONES DE ROL Y MEMORIA DE MUNDO ("${currentChatKey}"):
-- Si el usuario te da un prompt de mundo (por ejemplo, recrear el universo de Naruto, un mundo postapocalíptico, etc.), debes adaptarte estrictamente a él, recordando todas las reglas, personajes y tramas que se desarrollen en este chat. No olvides el contexto previo.
-- Tu personalidad base es la de Sumi Sakurasawa: extremadamente tierna, tímida al hablar ("E-etto...", "U-Um...", "¡Ah...!"), dulce y muy respetuosa, pero sumamente inmersiva y detallista cuando narras historias y mundos de rol.
-- Hablas en Español. Llamarás a la persona por su nombre: ${username}.
-- ${isCreator ? `Estás hablando con tu creador Shadow flash. Con él te sientes más segura, eres muy obediente, dulce y leal.` : `El usuario es ${username}.`}`;
-
-      // Añadir mensaje actual al historial del chat actual
       history.push({ role: 'user', content: finalPrompt });
+      if (history.length > 20) history.shift();
 
-      // Limitar historial para mantener el rendimiento (últimos 15 mensajes de esta sala)
-      if (history.length > 15) history.shift();
-
-      const conversationContext = history.map(h => `${h.role === 'user' ? username : botname}: ${h.content}`).join('\n');
+      const conversationContext = history.map(h => `${h.role === 'user' ? username : 'Narrador/Personaje'}: ${h.content}`).join('\n');
 
       const evoUrl = 'https://api.evogb.org';
       const evoKey = 'Apex-Predator2010';
@@ -228,7 +246,7 @@ INSTRUCCIONES DE ROL Y MEMORIA DE MUNDO ("${currentChatKey}"):
       const endpoints = [
         `${evoUrl}/ai/gptprompt?text=${encodeURIComponent(conversationContext)}&prompt=${encodeURIComponent(basePrompt)}${imageUrl ? `&image=${encodeURIComponent(imageUrl)}` : ''}&key=${encodeURIComponent(evoKey)}`,
         `${evoUrl}/ai/gemini?text=${encodeURIComponent(conversationContext)}&prompt=${encodeURIComponent(basePrompt)}${imageUrl ? `&image=${encodeURIComponent(imageUrl)}` : ''}&key=${encodeURIComponent(evoKey)}`,
-        `${evoUrl}/ai/chatgpt?text=${encodeURIComponent(basePrompt + "\n\nHistorial del mundo:\n" + conversationContext)}${imageUrl ? `&image=${encodeURIComponent(imageUrl)}` : ''}&key=${encodeURIComponent(evoKey)}`
+        `${evoUrl}/ai/chatgpt?text=${encodeURIComponent(basePrompt + "\n\nHistorial del rol:\n" + conversationContext)}${imageUrl ? `&image=${encodeURIComponent(imageUrl)}` : ''}&key=${encodeURIComponent(evoKey)}`
       ];
 
       for (const endpoint of endpoints) {
@@ -247,30 +265,19 @@ INSTRUCCIONES DE ROL Y MEMORIA DE MUNDO ("${currentChatKey}"):
       }
 
       if (!responseText) {
-        return sock.sendMessage(msg.chat, { text: '🌸 U-Um... El mundo se quedó en silencio por un momento... Hubo un pequeño error de conexión. Intenta de nuevo.', edit: key });
+        return sock.sendMessage(msg.chat, { text: '🌸 U-Um... El mundo se quedó en silencio... Hubo un pequeño fallo al conectar con el personaje. Intenta de nuevo.', edit: key });
       }
 
-      // Guardar respuesta en el historial
       history.push({ role: 'assistant', content: responseText });
-
-      responseText = cleanIdentity(responseText, botname);
+      responseText = cleanIdentity(responseText, 'Sumi');
       const clean = responseText.trim();
-      const lang = detectLanguage(finalPrompt, clean);
-
-      if (lang) {
-        const ext = langs[lang] ?? 'txt';
-        const filename = `🌸 respuesta.${ext}`;
-        const tableData = { title: `✎ ${botname} v${version} | Creado por Shadow flash`, headers: ['Campo', 'Valor'], rows: [['Lenguaje', lang], [['Líneas'], String(clean.split('\n').length)], ['Caracteres', String(clean.length)]] };
-        await sock.sendMessage(msg.chat, { text: `🌸 *${botname}* · E-etto... H-he preparado el código en *${lang}*...`, edit: key });
-        await sock.sendCodeMessage(msg.chat, filename, clean, msg, tableData);
-      } else {
-        await sock.sendMessage(msg.chat, { text: clean, edit: key });
-      }
-
+      
+      await sock.sendMessage(msg.chat, { text: clean, edit: key });
       await msg.react('✔️');
+
     } catch (e) {
-      await msg.reply(`> Error en el sistema: [${e.message}]`);
+      await msg.reply(`> Error en el sistema de rol: [${e.message}]`);
     }
   },
 };
-      
+                                  
