@@ -191,3 +191,4 @@ setInterval(monitorAndCleanTmp, 300000)
 monitorAndCleanTmp() // Vigilancia cada 5min
 
 setInterval(performScheduledCleanup, 7200000) // Limpieza cada 2hs
+  
