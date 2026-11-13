@@ -3,39 +3,28 @@ import { watchFile, unwatchFile } from 'fs';
 import { fileURLToPath } from 'url';
 
 global.owner = [
-  // mai
     '573015200599',
     '104260465336559@lid',
-  // Bryan
     '593989068253',
     '584148014097',
- // 亗𝙽𝚎𝚝𝚑𝚎𝚛𝙻𝚘𝚛𝚍亗
     '5491157745642',
-    '5491128178894',
-  '51983564381', // capy
+    '51983564381',
 ];
 
 global.devs = [
-  '584228025606', // 🤍💖
+ '51983564381',
 ];
 
 global.staff = [
-  '5215548732469', // Zaako
-  '51962502233', // 𝓙𝓮𝓼𝓾𝓾
-  '50245695772', // JL
-  '57995580944547@lid', //Stevan (Sair)
-  '5217441863414', // werkito⁶⁶⁶
-  '51983564381', //Alexa
+ '51983564381',
 ];
 
 global.inv = [
-  '51983564381', // no tocar att Mai
-  //uwu
-    '51914797450',
-    '265957830295654@lid',
+'51983564381',
 ];
 
-global.dev = "Created by @mai";
+global.botName = "Shadow-bot-prime";
+global.dev = "by Shadow-f-l-a-s-h";
 global.links = {
   api: 'https://api.evogb.org',
   channel: "https://whatsapp.com/channel/0029VbCbocKJpe8WhogtnG0w",
@@ -44,44 +33,19 @@ global.links = {
 };
 
 global.my = {
-  ch: "120363420992828502@newsletter", // Oficial
-  ch2: "120363405689107729@newsletter", // Api
-  ch1: '120363401404146384@newsletter'
+  ch: "",
+  ch2: "",
+  ch1: ''
 };
 
 global.APIs = { 
-  yuki: { url: "https://api.yuki-wabot.my.id", key: "YukiBot-MD" },
+  yuki: { url: "https://api.yuki-wabot.my.id", key: null },
   vreden: { url: "https://api.vreden.web.id", key: null },
   ootaizumi: { url: "https://api.ootaizumi.web.id", key: null },
   delirius: { url: "https://api.delirius.online", key: null },
   zenzxz: { url: "https://api.zenzxz.my.id", key: null },
   siputzx: { url: "https://app.siputzx.my.id", key: null },
-  evogb: {
-    url: 'https://api.evogb.org',
-    key: 'Apex-Predator2010'
-  },
-  pollinations: {
-    url: 'https://gen.pollinations.ai',
-    key: 'sk_DqqXIJt…' // <--- Tu clave de Pollinations que creaste en la web
-  },
-  genimg: {
-    // Rutas candidatas: {prompt} y {key} se reemplazan solos.
-    // En cuanto confirmes la ruta real, déjala PRIMERA o deja solo esa.
-    normal: [
-      '/ai/imagen?prompt={prompt}&key={key}',
-      '/ai/generate-image?prompt={prompt}&key={key}',
-      '/ai/text2img?prompt={prompt}&key={key}',
-      '/ai/flux?prompt={prompt}&key={key}',
-      '/ai/dalle?prompt={prompt}&key={key}'
-    ],
-    nsfw: [
-      '/nsfw/imagen?prompt={prompt}&key={key}',
-      '/nsfw/ia?prompt={prompt}&key={key}',
-      '/nsfw/text2img?prompt={prompt}&key={key}',
-      '/ai/nsfw?prompt={prompt}&key={key}',
-      '/ai/imagen?prompt={prompt}&key={key}&nsfw=true'
-    ]
-  }
+  evogb: { url: "https://api.evogb.org", key: null }
 };
 
 global.msgglobal = '✿⸝꙳.˖ Ocurrió un problema, contacte al creador';
@@ -103,4 +67,4 @@ watchFile(file, () => {
   unwatchFile(file);
   import(`${file}?update=${Date.now()}`);
 });
-    
+  
