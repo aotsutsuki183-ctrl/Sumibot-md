@@ -1,4 +1,6 @@
-let handler = async (m, { conn, text, usedPrefix, command }) => {
+import db from '#db';
+
+export async function handler({ msg, sock, text, usedPrefix, command }) {
     const excusas = [
         "No lo hice porque el cable del internet de mi tostadora estaba desconectado.",
         "La base de datos se cayó porque un gato pisó el teclado.",
@@ -13,21 +15,19 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         "Los hamsters que corren en la rueda del servidor están de huelga por horas extras."
     ];
     
-    // Simula un estado de tipeo para darle más suspenso al chiste
-    await conn.sendPresenceUpdate('composing', m.chat);
+    // Simula estado de tipeo
+    await sock.sendPresenceUpdate('composing', msg.chat);
     
-    // Espera 1.5 segundos para dar efecto de "análisis técnico"
+    // Espera 1.5 segundos para dar efecto de análisis técnico
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    // Elige una excusa al azar de la lista ampliada
+    // Elige una excusa al azar
     const excusaAleatoria = excusas[Math.floor(Math.random() * excusas.length)];
     
-    await conn.reply(m.chat, `🤖 *Diagnóstico técnico avanzado:* \n\n${excusaAleatoria}`, m);
+    await sock.reply(msg.chat, `🤖 *Diagnóstico técnico avanzado:* \n\n${excusaAleatoria}`, msg);
 }
 
-handler.help = ['mentira']
-handler.tags = ['utils']
-handler.command = /^(mentira|excusa|bugfalso|excusas)$/i
-
-module.exports = handler
-        
+handler.help = ['mentira', 'excusa'];
+handler.tags = ['utils'];
+handler.command = /^(mentira|excusa|bugfalso|excusas)$/i;
+                                            
