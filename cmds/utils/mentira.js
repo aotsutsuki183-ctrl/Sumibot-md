@@ -29,4 +29,5 @@ handler.help = ['mentira']
 handler.tags = ['utils']
 handler.command = /^(mentira|excusa|bugfalso|excusas)$/i
 
-export default handler
+module.exports = handler
+        
