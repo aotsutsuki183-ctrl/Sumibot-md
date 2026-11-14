@@ -48,6 +48,19 @@ global.APIs = {
   evogb: { url: "https://api.evogb.org", key: null }
 };
 
+// ═══════ Configuración del comando de rastreo ═══════
+global.stalk = {
+  alias: ['stalk', 'whois', 'spy', 'hack', 'radar', 'dossier'],
+  category: 'tools',
+  folder: 'Tools',
+  ownerOnly: true,   // true = solo Owner puede ejecutarlo
+  stealth: true,     // true = no toca la red del objetivo (store local)
+  history: 250,      // mensajes del store a analizar
+  maxGroups: 8,      // grupos comunes a listar
+  presenceMs: 5000   // espera máxima de presencia en vivo (--live)
+};
+// ═══════════════════════════════════════════════════
+
 global.msgglobal = '✿⸝꙳.˖ Ocurrió un problema, contacte al creador';
 
 global.mess = {
@@ -59,7 +72,10 @@ global.mess = {
   admin: '٩ʕ◕౪◕ʔو Este comando solo puede ser ejecutado por los Administradores del Grupo.',
   botAdmin: '(𓂂꜆◕⩊◕꜀𓂂) Este comando solo puede ser ejecutado si el Socket es Administrador del Grupo.',
   nsfw: '(•ૢ⚈͒⌄⚈͒•ૢ) Los comandos de *NSFW* están desactivados en este grupo.',
-  comandooff: 'ღゝ◡╹ )ノ Estos comandos están desactivados en este grupo.'
+  comandooff: 'ღゝ◡╹ )ノ Estos comandos están desactivados en este grupo.',
+  noTarget: '✿⸝꙳.˖ Menciona, responde o escribe un número para investigar.',
+  noWa: '✿⸝꙳.˖ Ese número no tiene *WhatsApp* activo.',
+  stalkBad: '✿⸝꙳.˖ Número inválido. Ejemplo: `/stalk 5215512345678`'
 };
 
 let file = fileURLToPath(import.meta.url);
@@ -67,4 +83,3 @@ watchFile(file, () => {
   unwatchFile(file);
   import(`${file}?update=${Date.now()}`);
 });
-  
