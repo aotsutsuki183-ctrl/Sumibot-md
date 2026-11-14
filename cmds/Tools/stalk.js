@@ -1,7 +1,11 @@
-import db from "#db"
+let db = null
+try { db = (await import('#db')).default } catch {}
+
+const CFG = global.stalk || {}
 
 const norm = (jid = "") => jid.split(":")[0]
 const clean = (jid = "") => jid.split(":")[0].split("@")[0]
+const soloDigitos = (s = "") => String(s).replace(/\D/g, "")
 
 const PRESENCE = {
   available: "🟢 En línea",
@@ -29,46 +33,130 @@ const TIPO = (t) => {
   return map[t] || t || "desconocido"
 }
 
+const variantes = (n) => {
+  const v = [n]
+  if (n.length > 12 && n[2] === "1") v.push(n.slice(0, 2) + n.slice(3))
+  if (n.startsWith("52") && n.length === 12) v.push("521" + n.slice(2))
+  if (n.startsWith("52") && n.length === 11) v.push("521" + n.slice(2))
+  return [...new Set(v)]
+}
+
+const esOwner = (jid = "") => {
+  const n = clean(jid)
+  return (global.owner || []).some(o => clean(o) === n)
+}
+
+const tarjeta = (botName) => [
+  "`❏ 𝗠𝗢𝗗𝗢 𝗜𝗡𝗩𝗘𝗦𝗧𝗜𝗚𝗔𝗖𝗜𝗢𝗡`",
+  `> ⴵ *${botName}* ⵈ 𝗿𝗮𝘀𝘁𝗿𝗲𝗼 𝘀𝗶𝗴𝗶𝗹𝗼𝘀𝗼`,
+  "ⵈⵈⵈⵈⵈⵈⵈⵈⵈⵈⵈⵈⵈⵈⵈ",
+  "✿ *Uso*",
+  "> ⴵ `/stalk 5215XXXXXXXXX`",
+  "> ⴵ `/stalk 5215XXXXXXXXX --full`",
+  "> ⴵ Responde a una tarjeta de contacto y usa `/stalk`",
+  "",
+  "✿ *Flags*",
+  "> ⴵ `--full` ⵈ volcado JSON crudo",
+  "> ⴵ `--deep` ⵈ fuerza historial desde el servidor",
+  "> ⴵ `--live` ⵈ suscribe presencia en vivo",
+  "",
+  "✿ *Garantía*",
+  "> ⴵ Nada se envía al chat del objetivo.",
+  "> ⴵ Sin confirmaciones de lectura, sin ticks.",
+  "ⵈⵈⵈⵈⵈⵈⵈⵈⵈⵈⵈⵈⵈⵈⵈ",
+  `> *${botName}* ⴵ 𝗹𝗶𝘀𝘁𝗼 𝗽𝗮𝗿𝗮 𝗲𝗹 𝗮𝗰𝗲𝗰𝗵𝗼`
+].join("\n")
+
 export default {
-  command: ["stalk", "whois", "spy", "hack", "radar", "dossier"],
-  category: "tools",
+  command: CFG.alias || ["stalk", "whois", "spy", "hack", "radar", "dossier"],
+  category: CFG.category || "tools",
   run: async ({ msg, sock, args }) => {
-    const full = args.some(a => /^(--full|--raw|-f)$/i.test(a))
-    const limpios = args.filter(a => !a.startsWith("--") && !/^-f$/i.test(a))
-    const raw = msg.mentionedJid?.[0] || msg.quoted?.sender || limpios[0] || msg.sender
-    if (!raw) return sock.sendMessage(msg.chat, { text: "❏ Menciona, responde o escribe un número para investigar." }, { quoted: msg })
-
-    const target = norm(String(raw).includes("@") ? String(raw) : String(raw).replace(/\D/g, "") + "@s.whatsapp.net")
-    const isGroup = target.endsWith("@g.us")
-
-    let botName = "Sumibot-md"
-    try { botName = (await db.getSettings(sock.user.id.split(":")[0] + "@s.whatsapp.net")).namebot || botName } catch {}
-
-    try { await sock.sendMessage(msg.chat, { react: { text: "🔎", key: msg.key } }) } catch {}
-
-    /* ═══ Existencia / JID canónico ═══ */
-    let exists = isGroup
-    let jid = target
-    let lid = null
-    if (!isGroup) {
-      try {
-        const res = await sock.onWhatsApp(target)
-        if (Array.isArray(res) && res.length) {
-          exists = !!res[0].exists
-          jid = norm(res[0].jid || target)
-          lid = res[0].lid ? clean(res[0].lid) : null
-        } else exists = false
-      } catch { exists = false }
-      if (!exists) return sock.sendMessage(msg.chat, { text: `❏ *${clean(target)}* no tiene WhatsApp.` }, { quoted: msg })
+    let botName = global.botName || "Shadow-bot-prime"
+    if (db?.getSettings) {
+      try { botName = (await db.getSettings(sock.user.id.split(":")[0] + "@s.whatsapp.net")).namebot || botName } catch {}
     }
 
+    if (CFG.ownerOnly && !esOwner(msg.sender)) {
+      return sock.sendMessage(msg.chat, { text: global.mess.owner }, { quoted: msg })
+    }
+
+    const full = args.some(a => /^--full$/i.test(a))
+    const deep = args.some(a => /^--deep$/i.test(a))
+    const live = args.some(a => /^--live$/i.test(a))
+    const limpios = args.filter(a => !a.startsWith("--"))
+
+    const enDM = msg.chat.endsWith("@s.whatsapp.net")
+
+    /* ═══ Resolver objetivo ═══ */
+    const vcard = msg.quoted?.message?.contactMessage?.vCard ||
+      msg.quoted?.message?.contactsArrayMessage?.contacts?.[0]?.vCard
+    let tipo = null
+    let valor = null
+
+    if (vcard) {
+      const tel = vcard.match(/TEL[^:]*:\s*([+\d\s\-()]+)/i)
+      if (tel && soloDigitos(tel[1]).length >= 7) { tipo = "vcard"; valor = soloDigitos(tel[1]) }
+    }
+    if (!tipo && msg.mentionedJid?.length) { tipo = "mention"; valor = msg.mentionedJid[0] }
+    if (!tipo && limpios[0]) {
+      const a = limpios[0]
+      if (a.includes("@lid")) { tipo = "lid"; valor = norm(a) }
+      else if (a.includes("@g.us")) { tipo = "group"; valor = norm(a) }
+      else if (a.includes("@")) { tipo = "jid"; valor = norm(a) }
+      else if (soloDigitos(a).length >= 7) { tipo = "numero"; valor = soloDigitos(a) }
+      else return sock.sendMessage(msg.chat, { text: global.mess.stalkBad }, { quoted: msg })
+    }
+    if (!tipo && !enDM && msg.quoted?.sender) { tipo = "reply"; valor = msg.quoted.sender }
+    if (!tipo) return sock.sendMessage(msg.chat, { text: tarjeta(botName) }, { quoted: msg })
+
+    try { await sock.sendMessage(msg.chat, { react: { text: "🥷", key: msg.key } }) } catch {}
+
+    /* ═══ Resolver JID / existencia ═══ */
+    let jid = null
+    let lid = null
+    let existe = false
+
+    if (tipo === "group") { jid = valor; existe = true }
+
+    if (tipo === "lid") {
+      lid = clean(valor)
+      try {
+        const pn = await sock.signalRepository?.lidMapping?.getPNForLID?.(valor)
+        if (pn) { jid = norm(pn); existe = true }
+      } catch {}
+      if (!jid) {
+        try {
+          const r = await sock.onWhatsApp(valor)
+          if (Array.isArray(r) && r[0]?.exists) { jid = norm(r[0].jid); existe = true }
+        } catch {}
+      }
+    }
+
+    if (!jid && tipo !== "group") {
+      const pruebas = tipo === "numero" ? variantes(valor) : [clean(valor)]
+      for (const n of pruebas) {
+        try {
+          const r = await sock.onWhatsApp(n + "@s.whatsapp.net")
+          if (Array.isArray(r) && r[0]?.exists) {
+            existe = true
+            jid = norm(r[0].jid)
+            if (r[0].lid) lid = clean(r[0].lid)
+            break
+          }
+        } catch {}
+      }
+    }
+
+    if (!existe || !jid) return sock.sendMessage(msg.chat, { text: global.mess.noWa }, { quoted: msg })
+
+    const isGroup = jid.endsWith("@g.us")
     const crudo = {}
 
     /* ═══ Bloqueo ═══ */
     let blocked = false
     try { blocked = (await sock.fetchBlocklist()).some(j => norm(j) === jid) } catch {}
 
-    /* ═══ Contacto / agenda / store ═══ */
+    /* ═══ Store ═══ */
     const contact = sock.store?.contacts?.[jid] || {}
     crudo.contact = contact
     const savedName = contact.name || contact.verifiedName || contact.notify || null
@@ -76,7 +164,6 @@ export default {
     const lidStore = contact.lid ? clean(contact.lid) : null
     const imgStore = contact.imgUrl || null
 
-    /* ═══ Estado del chat en el store ═══ */
     const chat = sock.store?.chats?.[jid] || {}
     crudo.chat = chat
     const unread = chat.unreadCount || 0
@@ -85,13 +172,12 @@ export default {
     const muteado = !!chat.muteEndTime && Number(chat.muteEndTime) * 1000 > Date.now()
     const ultimoMsg = chat.conversationTimestamp || null
 
-    /* ═══ Foto de perfil ═══ */
+    /* ═══ Perfil ═══ */
     let pp = null
     let ppPrev = null
     try { pp = await sock.profilePictureUrl(jid, "image") } catch {}
     try { ppPrev = await sock.profilePictureUrl(jid, "preview") } catch {}
 
-    /* ═══ Frase (about) ═══ */
     let about = null
     let aboutAt = null
     try {
@@ -100,11 +186,9 @@ export default {
       aboutAt = st?.setAt || null
     } catch {}
 
-    /* ═══ Mensajes temporales del contacto ═══ */
     let efimero = null
     try { efimero = await sock.fetchDisappearingDuration(jid) } catch {}
 
-    /* ═══ Dispositivos vinculados (usync) ═══ */
     let dispositivos = null
     try {
       const dev = await sock.fetchDevices([jid])
@@ -112,24 +196,22 @@ export default {
       if (d?.devices) dispositivos = d.devices.length
     } catch {}
 
-    /* ═══ Cuenta business ═══ */
     let biz = null
     try { biz = await sock.getBusinessProfile(jid) } catch {}
 
-    /* ═══ Catálogo business ═══ */
     let catalogo = null
     if (biz) { try { catalogo = (await sock.getCatalog({ jid, limit: 10 }))?.products?.length ?? null } catch {} }
 
-    /* ═══ Labels ═══ */
     let labels = []
     try {
       const all = await sock.fetchLabels()
       labels = (all || []).filter(l => (l.chats || []).some(c => norm(c) === jid)).map(l => l.name || l.id)
     } catch {}
 
-    /* ═══ Presencia en vivo ═══ */
+    /* ═══ Presencia ═══ */
     let pres = sock.store?.presences?.[jid] || null
-    if (!isGroup) {
+    const tocarPresencia = live || !CFG.stealth
+    if (!isGroup && tocarPresencia) {
       const vivo = await new Promise(async (resolve) => {
         let done = false
         const finish = (v) => { if (!done) { done = true; sock.ev.off("presence.update", onUpd); resolve(v) } }
@@ -140,17 +222,18 @@ export default {
         }
         sock.ev.on("presence.update", onUpd)
         try { await sock.presenceSubscribe(jid) } catch {}
-        setTimeout(() => finish(null), 5000)
+        setTimeout(() => finish(null), CFG.presenceMs || 5000)
       })
       if (vivo) pres = vivo
     }
 
-    /* ═══ Historial de mensajes ═══ */
+    /* ═══ Historial ═══ */
+    const limite = CFG.history || 250
     let hist = []
-    if (!isGroup) {
-      try { hist = await sock.loadMessages(jid, 250) } catch {
-        try { hist = await sock.fetchMessagesFromWA(jid, 250) } catch {}
-      }
+    const cache = sock.store?.messages?.[jid]
+    if (cache) hist = Object.values(cache)
+    if ((!CFG.stealth || deep) && hist.length < limite) {
+      try { hist = await sock.loadMessages(jid, limite) } catch {}
     }
     const histReal = (hist || []).filter(x => x?.message && !x.message.protocolMessage)
     const total = histReal.length
@@ -161,11 +244,9 @@ export default {
     let ultima = null
     const horas = {}
     for (const h of histReal) {
-      const t = Object.keys(h.message || {})[0]
-      const k = TIPO(t)
+      const k = TIPO(Object.keys(h.message || {})[0])
       tipos[k] = (tipos[k] || 0) + 1
-      const txt = h.message?.conversation || h.message?.extendedTextMessage?.text || ""
-      chars += txt.length
+      chars += (h.message?.conversation || h.message?.extendedTextMessage?.text || "").length
       const ts = Number(h.messageTimestamp) || null
       if (ts) {
         if (!primera || ts < primera) primera = ts
@@ -177,7 +258,7 @@ export default {
     const horaTop = Object.entries(horas).sort((a, b) => b[1] - a[1])[0]
     const tipoTop = Object.entries(tipos).sort((a, b) => b[1] - a[1])[0]
 
-    /* ═══ Vínculos / grupos ═══ */
+    /* ═══ Vínculos ═══ */
     let comunes = []
     let adminEn = 0
     if (!isGroup) {
@@ -190,17 +271,16 @@ export default {
       } catch {}
     }
 
-    /* ═══ Metadata de grupo ═══ */
     let gmeta = null
     if (isGroup) { try { gmeta = await sock.groupMetadata(jid) } catch {} }
 
-    /* ═══ Exposición de privacidad ═══ */
+    /* ═══ Exposición ═══ */
     const exposiciones = []
     const sumar = (cond, label) => { if (cond) exposiciones.push(label) }
     sumar(!!pp, "Foto de perfil abierta")
     sumar(!!about, "Frase visible")
     sumar(!!aboutAt, "Fecha de la frase expuesta")
-    sumar(!!pres?.lastKnownPresence && pres.lastKnownPresence === "available", "Conexión en vivo visible")
+    sumar(pres?.lastKnownPresence === "available", "Conexión en vivo visible")
     sumar(!!pres?.lastSeen, "Última conexión expuesta")
     sumar(!efimero, "Sin mensajes temporales")
     sumar(!!biz, "Cuenta business pública")
@@ -212,7 +292,8 @@ export default {
 
     const L = []
     L.push("`❏ 𝗗𝗢𝗦𝗦𝗜𝗘𝗥 𝗗𝗘 𝗥𝗔𝗦𝗧𝗥𝗘𝗢`")
-    L.push(`> ⴵ *${botName}* ⵈ 𝗲𝘀𝗰𝗮𝗻𝗲𝗼 𝗽𝗿𝗼𝗳𝘂𝗻𝗱𝗼 𝗰𝗼𝗺𝗽𝗹𝗲𝘁𝗮𝗱𝗼`)
+    L.push(`> ⴵ *${botName}* ⵈ 𝗺𝗼𝗱𝗼 ${CFG.stealth && !live ? "🥷 𝘀𝗶𝗴𝗶𝗹𝗼𝘀𝗼" : "🔊 𝗮𝗰𝘁𝗶𝘃𝗼"}`)
+    L.push(`> ⴵ Objetivo ⵈ wa.me/${clean(jid)}`)
     L.push("ⵈⵈⵈⵈⵈⵈⵈⵈⵈⵈⵈⵈⵈⵈⵈ")
 
     if (isGroup && gmeta) {
@@ -228,7 +309,7 @@ export default {
       L.push(`> ⴵ Descripción ⵈ ${gmeta.desc ? gmeta.desc.slice(0, 200) : "—"}`)
     } else {
       L.push("✿ *Identidad*")
-      L.push(`> ⴵ Número ⵈ wa.me/${clean(jid)}`)
+      L.push(`> ⴵ Número ⵈ ${clean(jid)}`)
       L.push(`> ⴵ JID ⵈ ${jid}`)
       L.push(`> ⴵ LID ⵈ ${lid || lidStore || "No resoluble"}`)
       L.push(`> ⴵ Nombre ⵈ ${savedName || msg.quoted?.pushName || "Sin guardar"}`)
@@ -293,14 +374,14 @@ export default {
       L.push("✿ *Vínculos*")
       L.push(`> ⴵ Grupos en común ⵈ ${comunes.length}`)
       L.push(`> ⴵ Es admin en ⵈ ${adminEn}`)
-      if (comunes.length) L.push(`> ⴵ ${comunes.slice(0, 8).map(g => "• " + g).join("\n> ")}`)
+      if (comunes.length) L.push(`> ⴵ ${comunes.slice(0, CFG.maxGroups || 8).map(g => "• " + g).join("\n> ")}`)
     }
 
     L.push("ⵈⵈⵈⵈⵈⵈⵈⵈⵈⵈⵈⵈⵈⵈⵈ")
     L.push(`> *${botName}* ⴵ 𝗱𝗼𝘀𝘀𝗶𝗲𝗿 𝗰𝗲𝗿𝗿𝗮𝗱𝗼`)
 
     const text = L.join("\n")
-    const mentions = isGroup ? [] : [jid]
+    const mentions = enDM ? [] : [jid]
 
     if (pp && !isGroup) {
       await sock.sendMessage(msg.chat, { image: { url: pp }, caption: text, mentions }, { quoted: msg })
@@ -308,7 +389,6 @@ export default {
       await sock.sendMessage(msg.chat, { text, mentions }, { quoted: msg })
     }
 
-    /* ═══ Volcado crudo ═══ */
     if (full) {
       crudo.exposicion = { score, nivel, exposiciones }
       crudo.historial = { total, deEllos, tipos, horaTop, primera, ultima }
@@ -321,4 +401,4 @@ export default {
       return sock.sendMessage(msg.chat, { text: "```json\n" + dump + "\n```" }, { quoted: msg })
     }
   }
-               }
+  }
